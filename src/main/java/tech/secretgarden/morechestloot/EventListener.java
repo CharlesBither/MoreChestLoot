@@ -7,12 +7,11 @@ import org.bukkit.Material;
 import org.bukkit.block.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.LootGenerateEvent;
-import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.loot.LootTable;
@@ -32,9 +31,22 @@ public class EventListener implements Listener {
     private final Database database = new Database();
     private final CoreProtectAPI CoreProtect = new CoreProtectAPI();
     private final List<ItemStack> endItems = new ArrayList<>();
+    private static List<Location> placedBlocks = new ArrayList<>();
+    //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block properly. placedBlocks will perform the check instead.
 
     LocalDateTime date = LocalDateTime.now();
     Timestamp timestamp = Timestamp.valueOf(date);
+
+    @EventHandler
+    public void place(BlockPlaceEvent e) {
+        if (e.getBlockPlaced().getType().equals(Material.CHEST)) {
+            Location loc = e.getBlockPlaced().getLocation();
+            Biome biome = e.getBlockPlaced().getBiome();
+            if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+                placedBlocks.add(loc);
+            }
+        }
+    }
 
     @EventHandler
     public void interact(PlayerInteractEvent e) {
@@ -50,16 +62,24 @@ public class EventListener implements Listener {
                     int x = block.getX();
                     int y = block.getY();
                     int z = block.getZ();
+                    String stringX = Integer.toString(x);
+                    String stringY = Integer.toString(y);
+                    String stringZ = Integer.toString(z);
                     String uuid = e.getPlayer().getUniqueId().toString();
 
                     if (actionLookup(blockLookup)) {
-                        System.out.println("this is a clean chest");
                         //lookup database to see if they have opened chest before.
+                        for (Location loc : placedBlocks) {
+                            if (loc.equals(location)) {
+                                return;
+                            }
+                        }
+
                         if (check(e, x, y, z, uuid)) {
-                            System.out.println("testing");
                             e.setCancelled(true);
                             Chest chest = (Chest) block.getState();
-                            Inventory inv = Bukkit.createInventory(null, 36);
+                            String title = "Loot Chest " + stringX + " " + stringY + " " + stringZ;
+                            Inventory inv = Bukkit.createInventory(null, 36, title);
                             LootTable lt = LootTables.END_CITY_TREASURE.getLootTable();
                             chest.setLootTable(lt);
                             List<ItemStack> items = Arrays.asList(chest.getInventory().getContents());
@@ -70,9 +90,8 @@ public class EventListener implements Listener {
                             }
 
                             e.getPlayer().openInventory(inv);
-                            System.out.println("testing1");
-                            String invString = invConversion.inventoryToString(inv);
-                            System.out.println("converted inv");
+                            String invString = invConversion.inventoryToString(inv, title);
+                            System.out.println("created loot chest");
                             try (Connection connection = database.getPool().getConnection();
                                  PreparedStatement statement = connection.prepareStatement("INSERT INTO players (UUID, Inv, X, Y, Z, Timestamp) VALUES (?,?,?,?,?,?);")) {
                                 statement.setString(1, uuid);
@@ -86,7 +105,6 @@ public class EventListener implements Listener {
                             } catch (SQLException exception) {
                                 exception.printStackTrace();
                             }
-                            System.out.println("finished");
                         }
                     }
                 }
@@ -94,38 +112,94 @@ public class EventListener implements Listener {
         }
     }
 
+
     @EventHandler
     public void click(InventoryClickEvent e) {
         Biome biome = e.getWhoClicked().getLocation().getBlock().getBiome();
+        //gets biome player is standing in
         if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
-            if (e.getClickedInventory().getType().equals(InventoryType.CHEST)) {
-                try (Connection connection = database.getPool().getConnection();
-                    PreparedStatement statement = connection.prepareStatement("")) {
+            if (e.getView().getTitle().contains("Loot Chest")) {
+                String uuid = e.getWhoClicked().getUniqueId().toString();
+                String title = e.getView().getTitle();
+                String invString = invConversion.inventoryToString(e.getView().getTopInventory(), title);
+                int key = getKey(uuid, title);
+                if (key > 0) {
+                    try (Connection connection = database.getPool().getConnection();
+                         PreparedStatement statement = connection.prepareStatement("UPDATE players SET " +
+                                 "Inv = ? WHERE ID = " + key + ";")) {
+                        statement.setString(1, invString);
+                        statement.executeUpdate();
 
-                } catch (SQLException x) {
-                    x.printStackTrace();
+                    } catch (SQLException x) {
+                        x.printStackTrace();
+                    }
                 }
             }
         }
     }
 
+    @EventHandler
+    public void close(InventoryCloseEvent e) {
+        Biome biome = e.getPlayer().getLocation().getBlock().getBiome();
+        //gets biome player is standing in
+        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+            if (e.getView().getTitle().contains("Loot Chest")) {
+                String uuid = e.getPlayer().getUniqueId().toString();
+                String title = e.getView().getTitle();
+                String invString = invConversion.inventoryToString(e.getView().getTopInventory(), title);
+                int key = getKey(uuid, title);
+                if (key > 0) {
+                    try (Connection connection = database.getPool().getConnection();
+                         PreparedStatement statement = connection.prepareStatement("UPDATE players SET " +
+                                 "Inv = ? WHERE ID = " + key + ";")) {
+                        statement.setString(1, invString);
+                        statement.executeUpdate();
+
+                    } catch (SQLException x) {
+                        x.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+
+
+    private int getKey(String uuid, String title) {
+        int i = 0;
+        try (Connection connection = database.getPool().getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT ID, X, Y, Z, Inv FROM players WHERE UUID = '" + uuid + "'")) {
+            ResultSet rs = statement.executeQuery();
+            while (rs.next()) {
+                String stringX = Integer.toString(rs.getInt("X"));
+                String stringY = Integer.toString(rs.getInt("Y"));
+                String stringZ = Integer.toString(rs.getInt("Z"));
+                if (title.contains(stringX) && title.contains(stringY) && title.contains(stringZ)) {
+                    i =  rs.getInt("ID");
+                }
+            }
+
+        } catch (SQLException x) {
+            x.printStackTrace();
+        }
+        return i;
+    }
+
     private boolean check(PlayerInteractEvent e, int x, int y, int z, String uuid) {
         int i = 0;
         try (Connection connection = database.getPool().getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT Inv, X, Y, Z FROM players WHERE UUID = '" + uuid + "'")) {
+             PreparedStatement statement = connection.prepareStatement("SELECT Inv, X, Y, Z FROM players WHERE UUID = ?")) {
+            statement.setString(1, uuid);
             ResultSet rs = statement.executeQuery();
-            System.out.println("test");
             if (rs.next()) {
                 while (rs.next()) {
 
-                    System.out.println("test1");
                     int xx = rs.getInt("X");
                     int yy = rs.getInt("Y");
                     int zz = rs.getInt("Z");
                     String invString = rs.getString("Inv");
                     Inventory inv = invConversion.stringToInventory(invString);
                     if (xx == x && yy == y && zz == z) {
-                        System.out.println("test2");
                         i = i + 1;
                         e.setCancelled(true);
                         e.getPlayer().openInventory(inv);
