@@ -13,13 +13,13 @@ import java.util.Base64;
 
 public class InvConversion {
 
-    public String inventoryToString(Inventory inventory) {
+    public String inventoryToString(Inventory inventory, String title) {
         try {
             ByteArrayOutputStream str = new ByteArrayOutputStream();
             BukkitObjectOutputStream data = new BukkitObjectOutputStream(str);
 
             data.writeInt(inventory.getSize());
-            data.writeObject(ChatColor.DARK_PURPLE + "Stash");
+            data.writeObject(title);
             for (int i = 0; i < inventory.getSize(); i++) {
                 data.writeObject(inventory.getItem(i));
             }
