@@ -1,0 +1,6 @@
+name: MoreChestLoot
+version: '${project.version}'
+main: tech.secretgarden.morechestloot.MoreChestLoot
+api-version: 1.18
+authors: [ ChuckLingBao ]
+description: Generates loot for every player so that every player can loot the same chest.
