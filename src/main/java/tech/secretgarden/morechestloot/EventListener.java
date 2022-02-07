@@ -14,14 +14,13 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.LootGenerateEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.loot.LootContext;
 import org.bukkit.loot.LootTable;
 import org.bukkit.loot.LootTables;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
 
@@ -30,8 +29,8 @@ public class EventListener implements Listener {
     private final InvConversion invConversion = new InvConversion();
     private final Database database = new Database();
     private final CoreProtectAPI CoreProtect = new CoreProtectAPI();
-    private final List<ItemStack> endItems = new ArrayList<>();
-    private static List<Location> placedBlocks = new ArrayList<>();
+    private static final List<Location> placedBlocks = new ArrayList<>();
+    private final EndCityLoot endCityLoot = new EndCityLoot();
     //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block properly. placedBlocks will perform the check instead.
 
     LocalDateTime date = LocalDateTime.now();
@@ -74,21 +73,25 @@ public class EventListener implements Listener {
                                 return;
                             }
                         }
-
                         if (check(e, x, y, z, uuid)) {
                             e.setCancelled(true);
-                            Chest chest = (Chest) block.getState();
                             String title = "Loot Chest " + stringX + " " + stringY + " " + stringZ;
                             Inventory inv = Bukkit.createInventory(null, 36, title);
-                            LootTable lt = LootTables.END_CITY_TREASURE.getLootTable();
-                            chest.setLootTable(lt);
-                            List<ItemStack> items = Arrays.asList(chest.getInventory().getContents());
-                            for (ItemStack item : items) {
-                                if (item != null) {
-                                    inv.addItem(item);
-                                }
+                            Chest chest = (Chest) block.getState();
+                            LootTables lootTables = (LootTables.END_CITY_TREASURE);
+                            LootTable lootTable = lootTables.getLootTable();
+                            chest.setLootTable(lootTable);
+                            chest.update();
+                            ItemStack[] items = chest.getBlockInventory().getContents();
+                            inv.setContents(items);
+                            double random = new Random().nextDouble();
+                            if (random <= 0.06) {
+                                inv.addItem(new ItemStack(Material.ELYTRA));
                             }
-
+                            double random1 = new Random().nextDouble();
+                            if (random1 <= 0.03) {
+                                inv.addItem(new ItemStack(Material.NETHER_STAR));
+                            }
                             e.getPlayer().openInventory(inv);
                             String invString = invConversion.inventoryToString(inv, title);
                             System.out.println("created loot chest");
@@ -163,8 +166,6 @@ public class EventListener implements Listener {
         }
     }
 
-
-
     private int getKey(String uuid, String title) {
         int i = 0;
         try (Connection connection = database.getPool().getConnection();
@@ -178,7 +179,6 @@ public class EventListener implements Listener {
                     i =  rs.getInt("ID");
                 }
             }
-
         } catch (SQLException x) {
             x.printStackTrace();
         }
@@ -193,7 +193,6 @@ public class EventListener implements Listener {
             ResultSet rs = statement.executeQuery();
             if (rs.next()) {
                 while (rs.next()) {
-
                     int xx = rs.getInt("X");
                     int yy = rs.getInt("Y");
                     int zz = rs.getInt("Z");
@@ -225,36 +224,5 @@ public class EventListener implements Listener {
             }
         }
         return i == 1;
-    }
-/*
-    private ArrayList<Integer> actionLookup(List<String[]> lookup) {
-        ArrayList<Integer> actionList = new ArrayList<>();
-        for (String[] value : lookup) {
-            //gets every result from CP api blockLookup method.
-            CoreProtectAPI.ParseResult result = CoreProtect.parseResult(value);
-            int action = result.getActionId();
-            //actions are either placed, broken, or interact.
-            if (action == 1 || action == 0) {
-                actionList.add(1);
-            }
-        }
-        return actionList;
-    }
-
- */
-
-    @EventHandler
-    public void generate(LootGenerateEvent e) {
-        Location loc = e.getLootContext().getLocation();
-        Biome biome = loc.getWorld().getBiome(loc);
-        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
-            BlockState block = e.getLootContext().getLocation().getWorld().getBlockState(loc);
-            Block chest = block.getBlock();
-            if (e.getInventoryHolder().getInventory().getHolder().equals(chest)) {
-                List<ItemStack> items = e.getLoot();
-                endItems.addAll(items);
-                e.setCancelled(true);
-            }
-        }
     }
 }
