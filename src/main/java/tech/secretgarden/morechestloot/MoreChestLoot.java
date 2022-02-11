@@ -44,14 +44,14 @@ public final class MoreChestLoot extends JavaPlugin {
         System.out.println("Connected to database = " + Database.isConnected());
 
         try (Connection connection = database.getPool().getConnection();
-             PreparedStatement statement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS Players (" +
-                     "ID INT NOT NULL AUTO_INCREMENT PRIMARY KEY, " +
-                     "UUID VARCHAR(36), " +
-                     "Inv TEXT(65000), " +
-                     "X INT, " +
-                     "Y INT, " +
-                     "Z INT, " +
-                     "Timestamp TIMESTAMP NOT NULL);")) {
+             PreparedStatement statement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS player (" +
+                     "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, " +
+                     "uuid VARCHAR(36), " +
+                     "inv TEXT(65000), " +
+                     "x INT, " +
+                     "y INT, " +
+                     "z INT, " +
+                     "timestamp TIMESTAMP NOT NULL);")) {
             statement.executeUpdate();
 
         } catch (Exception x) {
