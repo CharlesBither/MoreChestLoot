@@ -29,8 +29,8 @@ public class EventListener implements Listener {
     private final InvConversion invConversion = new InvConversion();
     private final Database database = new Database();
     private final CoreProtectAPI CoreProtect = new CoreProtectAPI();
+    private final CoreProtectMethods coreProtectMethods = new CoreProtectMethods();
     private static final List<Location> placedBlocks = new ArrayList<>();
-    private final EndCityLoot endCityLoot = new EndCityLoot();
     //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block properly. placedBlocks will perform the check instead.
 
     LocalDateTime date = LocalDateTime.now();
@@ -49,11 +49,17 @@ public class EventListener implements Listener {
 
     @EventHandler
     public void interact(PlayerInteractEvent e) {
+
+        //did player click on a chest?
         if (e.getAction().equals(RIGHT_CLICK_BLOCK) && e.getClickedBlock().getType().equals(Material.CHEST)) {
             Location location = e.getClickedBlock().getLocation();
             Block block = location.getBlock();
             Biome biome = location.getBlock().getBiome();
+
+            //is this chest located in an end city?
             if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+
+                //look up the chest with cp api
                 List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
                 if (blockLookup == null) {
                     System.out.println("lookup is null! This is an error!");
@@ -66,24 +72,34 @@ public class EventListener implements Listener {
                     String stringZ = Integer.toString(z);
                     String uuid = e.getPlayer().getUniqueId().toString();
 
-                    if (actionLookup(blockLookup)) {
-                        //lookup database to see if they have opened chest before.
+                    if (coreProtectMethods.actionLookup(blockLookup)) {
+                        //lookup database to see if they have placed/broke specified chest before.
                         for (Location loc : placedBlocks) {
                             if (loc.equals(location)) {
                                 return;
                             }
                         }
-                        if (check(e, x, y, z, uuid)) {
+                        if (database.check(e, x, y, z, uuid)) {
+                            //check db. does this location exist for the player? (true == does not exist --- false will return method)
+                            //set cancelled so that a virtual inventory can be created in its place
                             e.setCancelled(true);
+
+                            //define the chest
                             String title = "Loot Chest " + stringX + " " + stringY + " " + stringZ;
                             Inventory inv = Bukkit.createInventory(null, 36, title);
                             Chest chest = (Chest) block.getState();
+
+                            //initialize loot table
                             LootTables lootTables = (LootTables.END_CITY_TREASURE);
                             LootTable lootTable = lootTables.getLootTable();
+
+                            //set contents to target inventory
                             chest.setLootTable(lootTable);
                             chest.update();
                             ItemStack[] items = chest.getBlockInventory().getContents();
                             inv.setContents(items);
+
+                            //chance of adding additional items
                             double random = new Random().nextDouble();
                             if (random <= 0.06) {
                                 inv.addItem(new ItemStack(Material.ELYTRA));
@@ -92,11 +108,15 @@ public class EventListener implements Listener {
                             if (random1 <= 0.03) {
                                 inv.addItem(new ItemStack(Material.NETHER_STAR));
                             }
+
+                            //open newly created inventory for player
                             e.getPlayer().openInventory(inv);
                             String invString = invConversion.inventoryToString(inv, title);
                             System.out.println("created loot chest");
+
+                            //store objects in db
                             try (Connection connection = database.getPool().getConnection();
-                                 PreparedStatement statement = connection.prepareStatement("INSERT INTO players (UUID, Inv, X, Y, Z, Timestamp) VALUES (?,?,?,?,?,?);")) {
+                                 PreparedStatement statement = connection.prepareStatement("INSERT INTO player (uuid, inv, x, y, z, timestamp) VALUES (?,?,?,?,?,?);")) {
                                 statement.setString(1, uuid);
                                 statement.setString(2, invString);
                                 statement.setInt(3, x);
@@ -121,15 +141,21 @@ public class EventListener implements Listener {
         Biome biome = e.getWhoClicked().getLocation().getBlock().getBiome();
         //gets biome player is standing in
         if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+            //is clicked inventory instance of a loot chest
             if (e.getView().getTitle().contains("Loot Chest")) {
+
+                //assign new inventory data -> String
                 String uuid = e.getWhoClicked().getUniqueId().toString();
                 String title = e.getView().getTitle();
                 String invString = invConversion.inventoryToString(e.getView().getTopInventory(), title);
-                int key = getKey(uuid, title);
+
+                //find inventory by uuid & xyz values
+                int key = database.getKey(uuid, title);
                 if (key > 0) {
+                    //update db with new inventory string
                     try (Connection connection = database.getPool().getConnection();
-                         PreparedStatement statement = connection.prepareStatement("UPDATE players SET " +
-                                 "Inv = ? WHERE ID = " + key + ";")) {
+                         PreparedStatement statement = connection.prepareStatement("UPDATE player SET " +
+                                 "inv = ? WHERE id = " + key + ";")) {
                         statement.setString(1, invString);
                         statement.executeUpdate();
 
@@ -150,11 +176,11 @@ public class EventListener implements Listener {
                 String uuid = e.getPlayer().getUniqueId().toString();
                 String title = e.getView().getTitle();
                 String invString = invConversion.inventoryToString(e.getView().getTopInventory(), title);
-                int key = getKey(uuid, title);
+                int key = database.getKey(uuid, title);
                 if (key > 0) {
                     try (Connection connection = database.getPool().getConnection();
-                         PreparedStatement statement = connection.prepareStatement("UPDATE players SET " +
-                                 "Inv = ? WHERE ID = " + key + ";")) {
+                         PreparedStatement statement = connection.prepareStatement("UPDATE player SET " +
+                                 "inv = ? WHERE id = " + key + ";")) {
                         statement.setString(1, invString);
                         statement.executeUpdate();
 
@@ -164,65 +190,5 @@ public class EventListener implements Listener {
                 }
             }
         }
-    }
-
-    private int getKey(String uuid, String title) {
-        int i = 0;
-        try (Connection connection = database.getPool().getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT ID, X, Y, Z, Inv FROM players WHERE UUID = '" + uuid + "'")) {
-            ResultSet rs = statement.executeQuery();
-            while (rs.next()) {
-                String stringX = Integer.toString(rs.getInt("X"));
-                String stringY = Integer.toString(rs.getInt("Y"));
-                String stringZ = Integer.toString(rs.getInt("Z"));
-                if (title.contains(stringX) && title.contains(stringY) && title.contains(stringZ)) {
-                    i =  rs.getInt("ID");
-                }
-            }
-        } catch (SQLException x) {
-            x.printStackTrace();
-        }
-        return i;
-    }
-
-    private boolean check(PlayerInteractEvent e, int x, int y, int z, String uuid) {
-        int i = 0;
-        try (Connection connection = database.getPool().getConnection();
-             PreparedStatement statement = connection.prepareStatement("SELECT Inv, X, Y, Z FROM players WHERE UUID = ?")) {
-            statement.setString(1, uuid);
-            ResultSet rs = statement.executeQuery();
-            if (rs.next()) {
-                while (rs.next()) {
-                    int xx = rs.getInt("X");
-                    int yy = rs.getInt("Y");
-                    int zz = rs.getInt("Z");
-                    String invString = rs.getString("Inv");
-                    Inventory inv = invConversion.stringToInventory(invString);
-                    if (xx == x && yy == y && zz == z) {
-                        i = i + 1;
-                        e.setCancelled(true);
-                        e.getPlayer().openInventory(inv);
-                    }
-                }
-            }
-
-        } catch (SQLException exception) {
-            exception.printStackTrace();
-        }
-        return i == 0;
-    }
-
-    private boolean actionLookup(List<String[]> lookup) {
-        int i = 1;
-        for (String[] value : lookup) {
-            //gets every result from CP api blockLookup method.
-            CoreProtectAPI.ParseResult result = CoreProtect.parseResult(value);
-            int action = result.getActionId();
-            //actions are either placed, broken, or interact.
-            if (action == 1 || action == 0) {
-                i = i + 1;
-            }
-        }
-        return i == 1;
     }
 }
