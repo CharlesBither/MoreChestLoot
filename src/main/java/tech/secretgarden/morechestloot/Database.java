@@ -76,21 +76,18 @@ public class Database {
              PreparedStatement statement = connection.prepareStatement("SELECT inv, x, y, z FROM player WHERE uuid = ?")) {
             statement.setString(1, uuid);
             ResultSet rs = statement.executeQuery();
-            if (rs.next()) {
-                while (rs.next()) {
-                    int xx = rs.getInt("x");
-                    int yy = rs.getInt("y");
-                    int zz = rs.getInt("z");
-                    String invString = rs.getString("inv");
-                    Inventory inv = invConversion.stringToInventory(invString);
-                    if (xx == x && yy == y && zz == z) {
-                        i = i + 1;
-                        e.setCancelled(true);
-                        e.getPlayer().openInventory(inv);
-                    }
+            while (rs.next()) {
+                int xx = rs.getInt("x");
+                int yy = rs.getInt("y");
+                int zz = rs.getInt("z");
+                String invString = rs.getString("inv");
+                Inventory inv = invConversion.stringToInventory(invString);
+                if (xx == x && yy == y && zz == z) {
+                    i = i + 1;
+                    e.setCancelled(true);
+                    e.getPlayer().openInventory(inv);
                 }
             }
-
         } catch (SQLException exception) {
             exception.printStackTrace();
         }
