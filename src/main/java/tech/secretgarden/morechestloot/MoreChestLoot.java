@@ -5,6 +5,7 @@ import net.coreprotect.CoreProtectAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,24 +40,24 @@ public final class MoreChestLoot extends JavaPlugin {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            try (Connection connection = database.getPool().getConnection();
+                 PreparedStatement statement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS player (" +
+                         "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, " +
+                         "uuid VARCHAR(36), " +
+                         "inv TEXT(65000), " +
+                         "x INT, " +
+                         "y INT, " +
+                         "z INT, " +
+                         "timestamp TIMESTAMP NOT NULL);")) {
+                statement.executeUpdate();
+
+            } catch (Exception x) {
+                x.printStackTrace();
+            }
+            ping.runTaskTimer(this, 20, 20 * 60);
         }
 
         System.out.println("Connected to database = " + Database.isConnected());
-
-        try (Connection connection = database.getPool().getConnection();
-             PreparedStatement statement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS player (" +
-                     "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, " +
-                     "uuid VARCHAR(36), " +
-                     "inv TEXT(65000), " +
-                     "x INT, " +
-                     "y INT, " +
-                     "z INT, " +
-                     "timestamp TIMESTAMP NOT NULL);")) {
-            statement.executeUpdate();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-        }
 
         CoreProtectAPI api = getCoreProtect();
         if (api != null){ // Ensure we have access to the API
@@ -90,5 +91,19 @@ public final class MoreChestLoot extends JavaPlugin {
     public void onDisable() {
         // Plugin shutdown logic
         System.out.println("Plugin has been disabled");
+        Database.disconnect();
     }
+
+    BukkitRunnable ping = new BukkitRunnable() {
+        @Override
+        public void run() {
+            try (Connection connection = database.getPool().getConnection();
+            PreparedStatement statement = connection.prepareStatement("SELECT 1")) {
+                statement.executeQuery();
+                System.out.println("MoreChestLoot Ping");
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    };
 }
