@@ -4,6 +4,7 @@ import net.coreprotect.CoreProtectAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.StructureType;
 import org.bukkit.block.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,13 +13,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.world.LootGenerateEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.loot.LootContext;
-import org.bukkit.loot.LootTable;
-import org.bukkit.loot.LootTables;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -34,6 +30,7 @@ public class EventListener implements Listener {
     private final CoreProtectMethods coreProtectMethods = new CoreProtectMethods();
     private static final List<Location> placedBlocks = new ArrayList<>();
     //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block properly. placedBlocks will perform the check instead.
+    private static final List<StructureType> structureList = new ArrayList<>();
 
     LocalDateTime date = LocalDateTime.now();
     Timestamp timestamp = Timestamp.valueOf(date);
@@ -43,7 +40,7 @@ public class EventListener implements Listener {
         if (e.getBlockPlaced().getType().equals(Material.CHEST)) {
             Location loc = e.getBlockPlaced().getLocation();
             Biome biome = e.getBlockPlaced().getBiome();
-            if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+            if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS) || biome.equals(Biome.SMALL_END_ISLANDS)) {
                 placedBlocks.add(loc);
             }
         }
@@ -51,6 +48,10 @@ public class EventListener implements Listener {
 
     @EventHandler
     public void interact(PlayerInteractEvent e) {
+        Map<String, StructureType> structureMap = StructureType.getStructureTypes();
+        for (Map.Entry<String, StructureType> entry : structureMap.entrySet()) {
+            structureList.add(entry.getValue());
+        }
 
         //did player click on a chest?
         if (e.getAction().equals(RIGHT_CLICK_BLOCK) && e.getClickedBlock().getType().equals(Material.CHEST)) {
@@ -59,7 +60,7 @@ public class EventListener implements Listener {
             Biome biome = location.getBlock().getBiome();
 
             //is this chest located in an end city?
-            if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+            if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS) || biome.equals(Biome.SMALL_END_ISLANDS)) {
 
                 //look up the chest with cp api
                 List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
@@ -89,19 +90,6 @@ public class EventListener implements Listener {
                             String title = "Loot Chest " + stringX + " " + stringY + " " + stringZ;
                             Inventory inv = Bukkit.createInventory(null, 36, title);
 
-                            /*
-                            //initialize loot table
-                            LootTables lootTables = LootTables.END_CITY_TREASURE;
-                            LootTable lootTable = lootTables.getLootTable();
-
-                            //set contents to target inventory
-                            chest.setLootTable(lootTable);
-                            chest.update();
-
-                             */
-                            //chance of adding additional items
-
-
                             //open newly created inventory for player
                             String invString = invConversion.inventoryToString(inv, title);
                             System.out.println("created loot chest");
@@ -124,6 +112,7 @@ public class EventListener implements Listener {
                         }
                     }
                 }
+
             }
         }
     }
@@ -197,58 +186,12 @@ public class EventListener implements Listener {
             }
         }
     }
-/*
-    @EventHandler
-    public void generate(LootGenerateEvent e) {
-        System.out.println("generating");
-        Biome biome = e.getLootContext().getLocation().getBlock().getBiome();
-        //gets biome player is standing in
-        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS) || biome.equals(Biome.SMALL_END_ISLANDS)) {
-            if (e.getLootContext().getLocation().getBlock().getType().equals(Material.CHEST)) {
-                Location location = e.getLootContext().getLocation();
-                System.out.println("got location");
-                int x = location.getBlockX();
-                int y = location.getBlockY();
-                int z = location.getBlockZ();
-                ItemStack[] items = e.getInventoryHolder().getInventory().getContents();
-                for (ItemStack item : items) {
-                    System.out.println(item);
-                }
-                List<ItemStack> list = e.getLoot();
-                try (Connection connection = database.getPool().getConnection();
-                PreparedStatement statement = connection.prepareStatement("SELECT inv FROM player WHERE x = ? AND y = ? AND z = ?")) {
-                    statement.setInt(1, x);
-                    statement.setInt(2, y);
-                    statement.setInt(3, z);
-                    ResultSet rs = statement.executeQuery();
-                    System.out.println("got results");
-                    while (rs.next()) {
-                        String invString = rs.getString("inv");
-                        Inventory inv = invConversion.stringToInventory(invString);
-                        System.out.println("converted inv");
-                        inv.setContents(items);
-                        System.out.println("added items");
-                    }
-                    e.setCancelled(true);
-                    System.out.println("cancelled");
-                } catch (SQLException exception) {
-                    exception.printStackTrace();
-                }
-
-            }
-        }
-        //is the loot being generated in a chest?
-
-    }
-
-     */
-
 
     @EventHandler
     public void click(InventoryClickEvent e) {
         Biome biome = e.getWhoClicked().getLocation().getBlock().getBiome();
         //gets biome player is standing in
-        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS) || biome.equals(Biome.SMALL_END_ISLANDS)) {
             //is clicked inventory instance of a loot chest
             if (e.getView().getTitle().contains("Loot Chest")) {
 
@@ -279,7 +222,7 @@ public class EventListener implements Listener {
     public void close(InventoryCloseEvent e) {
         Biome biome = e.getPlayer().getLocation().getBlock().getBiome();
         //gets biome player is standing in
-        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS)) {
+        if (biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_MIDLANDS) || biome.equals(Biome.SMALL_END_ISLANDS)) {
             if (e.getView().getTitle().contains("Loot Chest")) {
                 String uuid = e.getPlayer().getUniqueId().toString();
                 String title = e.getView().getTitle();
