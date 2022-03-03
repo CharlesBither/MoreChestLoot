@@ -129,9 +129,15 @@ public class EventListener implements Listener {
                                     for (Location loc : placedBlocks) {
                                         if (loc.equals(location)) {
                                             return;
-                                            //WHAT IF I PLACED A CHEST NEXT TO A LOOT CHEST
                                         }
                                     }
+
+                                    //interacted with a natural chest
+                                    if (block.getType().equals(Material.CHEST)) {
+
+                                    }
+
+
                                     if (database.check(e, x, y, z, uuid)) {
                                         //check db. does this location exist for the player? (true == does not exist --- false will return method & OPEN SPECIFIED INVENTORY)
                                         //WILL BE SET CANCELLED BY METHOD so that a virtual inventory can be created in its place
