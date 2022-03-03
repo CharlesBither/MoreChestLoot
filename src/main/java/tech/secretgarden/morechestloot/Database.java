@@ -1,6 +1,7 @@
 package tech.secretgarden.morechestloot;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 
@@ -70,7 +71,7 @@ public class Database {
         return i;
     }
 
-    public boolean check(PlayerInteractEvent e, int x, int y, int z, String uuid) {
+    public boolean check(InventoryOpenEvent e, int x, int y, int z, String uuid) {
         int i = 0;
         try (Connection connection = getPool().getConnection();
              PreparedStatement statement = connection.prepareStatement("SELECT inv, x, y, z FROM player WHERE uuid = ?")) {

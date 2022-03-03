@@ -3,6 +3,7 @@ package tech.secretgarden.morechestloot;
 import net.coreprotect.CoreProtect;
 import net.coreprotect.CoreProtectAPI;
 import org.bukkit.Bukkit;
+import org.bukkit.StructureType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -11,11 +12,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-public final class MoreChestLoot extends JavaPlugin {
+public class MoreChestLoot extends JavaPlugin {
 
     public static ArrayList<String> configList = new ArrayList<>();
     private Database database = new Database();
+    private EventListener eventListener = new EventListener();
     public ArrayList<String> getList() {
         configList.add(getConfig().getString("HOST"));
         configList.add(getConfig().getString("PORT"));
@@ -48,6 +52,7 @@ public final class MoreChestLoot extends JavaPlugin {
                          "x INT, " +
                          "y INT, " +
                          "z INT, " +
+                         "world VARCHAR(30)," +
                          "timestamp TIMESTAMP NOT NULL);")) {
                 statement.executeUpdate();
 
@@ -64,6 +69,11 @@ public final class MoreChestLoot extends JavaPlugin {
             api.testAPI(); // Will print out "[CoreProtect] API test successful." in the console.
         }
         Bukkit.getPluginManager().registerEvents(new EventListener(), this);
+
+        Map<String, StructureType> structureMap = StructureType.getStructureTypes();
+        for (Map.Entry<String, StructureType> entry : structureMap.entrySet()) {
+            EventListener.structureList.add(entry.getValue());
+        }
     }
     public CoreProtectAPI getCoreProtect() {
         Plugin plugin = getServer().getPluginManager().getPlugin("CoreProtect");
@@ -87,6 +97,7 @@ public final class MoreChestLoot extends JavaPlugin {
         return CoreProtect;
     }
 
+
     @Override
     public void onDisable() {
         // Plugin shutdown logic
@@ -100,7 +111,6 @@ public final class MoreChestLoot extends JavaPlugin {
             try (Connection connection = database.getPool().getConnection();
             PreparedStatement statement = connection.prepareStatement("SELECT 1")) {
                 statement.executeQuery();
-                System.out.println("MoreChestLoot Ping");
             } catch (SQLException e) {
                 e.printStackTrace();
             }
