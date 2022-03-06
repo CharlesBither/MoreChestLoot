@@ -82,12 +82,13 @@ public class EventListener implements Listener {
     @EventHandler
     public void open(InventoryOpenEvent e) {
         if (e.getInventory().getLocation() != null) {
-
+            System.out.println("opened inv");
             Block block = e.getInventory().getLocation().getBlock();
             Location location = block.getLocation();
             String uuid = e.getPlayer().getUniqueId().toString();
             if (block.getType().equals(Material.CHEST) || block.getType().equals(Material.CHEST_MINECART) ||
                     block.getType().equals(Material.TRAPPED_CHEST) || block.getType().equals(Material.BARREL)) {
+                System.out.println("it is a chest");
                 if (structureDistanceCheck(location)) {
                     //Looking up block with cp api
                     List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
@@ -158,6 +159,7 @@ public class EventListener implements Listener {
         for (StructureType structureType : structureList) {
             if (location.getWorld().locateNearestStructure(location, structureType, 3, false) != null) {
                 Location structureLocation = location.getWorld().locateNearestStructure(location, structureType, 3, false);
+                System.out.println(structureType.toString() + location.distanceSquared(structureLocation));
 
                 if (location.distanceSquared(structureLocation) <= 10000) {
                     i = i + 1;
