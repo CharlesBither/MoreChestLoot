@@ -8,10 +8,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -20,8 +18,6 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
-
 public class EventListener implements Listener {
 
     private final InvConversion invConversion = new InvConversion();
@@ -29,7 +25,7 @@ public class EventListener implements Listener {
     private final CoreProtectAPI CoreProtect = new CoreProtectAPI();
     private final CoreProtectMethods coreProtectMethods = new CoreProtectMethods();
     private static final List<Location> placedBlocks = new ArrayList<>();
-    //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block properly. placedBlocks will perform the check instead.
+    //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block. placedBlocks will perform the check instead.
     public static List<StructureType> structureList = new ArrayList<>();
 
     LocalDateTime date = LocalDateTime.now();
@@ -54,29 +50,6 @@ public class EventListener implements Listener {
                     placedBlocks.add(location);
                 }
             }
-            /*
-            for (StructureType structureType : structureList) {
-                if (location.getWorld().locateNearestStructure(location, structureType, 3, false) != null) {
-                    Location structureLocation = location.getWorld().locateNearestStructure(location, structureType, 3, false);
-
-                    if (location.distanceSquared(structureLocation) <= 10000) {
-                        //At this point. a chest has been placed near a structure
-                        System.out.println("you placed a block near a structure");
-
-                        //checks if a chest was placed next to a loot chest
-                        checkBlockPlaceSouthEast(e, 1, 0);
-                        checkBlockPlaceSouthEast(e, 0, 1);
-                        checkBlockPlaceNorthWest(e, 1, 0);
-                        checkBlockPlaceNorthWest(e, 0, 1);
-
-                        if (!e.isCancelled()) {
-                            placedBlocks.add(location);
-                        }
-                    }
-                }
-            }
-
-             */
         }
     }
 
@@ -109,12 +82,12 @@ public class EventListener implements Listener {
     @EventHandler
     public void open(InventoryOpenEvent e) {
         if (e.getInventory().getLocation() != null) {
-
+            System.out.println("opened inv");
             Block block = e.getInventory().getLocation().getBlock();
             Location location = block.getLocation();
             String uuid = e.getPlayer().getUniqueId().toString();
-            if (block.getType().equals(Material.CHEST) || block.getType().equals(Material.CHEST_MINECART) ||
-                    block.getType().equals(Material.TRAPPED_CHEST) || block.getType().equals(Material.BARREL)) {
+            if (block.getType().equals(Material.CHEST) || block.getType().equals(Material.TRAPPED_CHEST) || block.getType().equals(Material.BARREL)) {
+                System.out.println("it is a chest");
                 if (structureDistanceCheck(location)) {
                     //Looking up block with cp api
                     List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
@@ -134,120 +107,22 @@ public class EventListener implements Listener {
                                 x = leftChest.getX();
                                 y = leftChest.getY();
                                 z = leftChest.getZ();
-
-                                if (coreProtectMethods.actionLookup(blockLookup)) {
-                                    //(if a player has NOT placed this block before)
-                                    if (placedBlockMapCheck(block)) {
-                                        //(if a player has placed this block before)
-                                        return;
-                                    } else {
-                                        checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                        //If player has loot chest it will stop here
-                                        setInventory(e, x, y, z, location);
-                                    }
-                                }
-                            } else {
-                                //block = single chest
-                                if (coreProtectMethods.actionLookup(blockLookup)) {
-                                    //(if a player has NOT placed this block before)
-                                    if (placedBlockMapCheck(block)) {
-                                        //(if a player has placed this block before)
-                                        return;
-                                    } else {
-                                        checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                        //If player has loot chest it will stop here
-                                        setInventory(e, x, y, z, location);
-                                    }
-                                }
                             }
-                        } else {
-                            //block = a block other than a chest
-                            if (coreProtectMethods.actionLookup(blockLookup)) {
-                                //(if a player has NOT placed this block before)
-                                if (placedBlockMapCheck(block)) {
-                                    //(if a player has placed this block before)
-                                    return;
-                                } else {
-                                    checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                    //If player has loot chest it will stop here
-                                    setInventory(e, x, y, z, location);
-                                }
+                        }
+                        //block = a block other than a chest
+                        if (coreProtectMethods.actionLookup(blockLookup)) {
+                            //(if a player has NOT placed this block before)
+                            if (placedBlockMapCheck(block)) {
+                                //(if a player has placed this block before)
+                                return;
+                            } else {
+                                checkOrMakeInventory(e, x, y, z, 27, uuid, location);
+                                //If player has loot chest it will stop here
+                                setInventory(e, x, y, z, location);
                             }
                         }
                     }
                 }
-                /*
-                for (StructureType structureType : structureList) {
-                    if (location.getWorld().locateNearestStructure(location, structureType, 3, false) != null) {
-                        Location structureLocation = location.getWorld().locateNearestStructure(location, structureType, 3, false);
-                        if (location.distanceSquared(structureLocation) <= 10000) {
-                            //Looking up block with cp api
-                            List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
-                            if (blockLookup == null) {
-                                System.out.println("lookup is null! This is an error!");
-                            } else {
-
-                                if (block.getType().equals(Material.CHEST)) {
-                                    Chest chest = (Chest) block.getState();
-                                    InventoryHolder holder = chest.getBlockInventory().getHolder();
-                                    if (holder instanceof DoubleChest) {
-                                        DoubleChest doubleChest = (DoubleChest) holder;
-                                        Chest leftChest = (Chest) doubleChest.getLeftSide();
-                                        int x = leftChest.getX();
-                                        int y = leftChest.getY();
-                                        int z = leftChest.getZ();
-
-                                        if (coreProtectMethods.actionLookup(blockLookup)) {
-                                            //(if a player has NOT placed this block before)
-                                            if (placedBlockMapCheck(block)) {
-                                                //(if a player has placed this block before)
-                                                return;
-                                            } else {
-                                                checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                                //If player has loot chest it will stop here
-                                                setInventory(e, x, y, z, location);
-                                            }
-                                        }
-                                    } else {
-                                        //block = single chest
-                                        int x = block.getX();
-                                        int y = block.getY();
-                                        int z = block.getZ();
-                                        if (coreProtectMethods.actionLookup(blockLookup)) {
-                                            //(if a player has NOT placed this block before)
-                                            if (placedBlockMapCheck(block)) {
-                                                //(if a player has placed this block before)
-                                                return;
-                                            } else {
-                                                checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                                //If player has loot chest it will stop here
-                                                setInventory(e, x, y, z, location);
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    //block = a block other than a chest
-                                    int x = block.getX();
-                                    int y = block.getY();
-                                    int z = block.getZ();
-                                    if (coreProtectMethods.actionLookup(blockLookup)) {
-                                        //(if a player has NOT placed this block before)
-                                        if (placedBlockMapCheck(block)) {
-                                            //(if a player has placed this block before)
-                                            return;
-                                        } else {
-                                            checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                            //If player has loot chest it will stop here
-                                            setInventory(e, x, y, z, location);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                 */
             }
         }
     }
@@ -258,7 +133,6 @@ public class EventListener implements Listener {
         Location location = e.getPlayer().getLocation();
 
         if (structureDistanceCheck(location)) {
-            System.out.println("You closed an inventory near a structure");
             if (e.getView().getTitle().contains("Loot Chest")) {
                 String uuid = e.getPlayer().getUniqueId().toString();
                 String title = e.getView().getTitle();
@@ -277,34 +151,6 @@ public class EventListener implements Listener {
                 }
             }
         }
-        /*
-        for (StructureType structureType : structureList) {
-            if (location.getWorld().locateNearestStructure(location, structureType, 3, false) != null) {
-                Location structureLocation = location.getWorld().locateNearestStructure(location, structureType, 3, false);
-                if (location.distanceSquared(structureLocation) <= 10000) {
-                    System.out.println("You closed an inventory near a structure");
-                    if (e.getView().getTitle().contains("Loot Chest")) {
-                        String uuid = e.getPlayer().getUniqueId().toString();
-                        String title = e.getView().getTitle();
-                        String invString = invConversion.inventoryToString(e.getView().getTopInventory(), title);
-                        int key = database.getKey(uuid, title);
-                        if (key > 0) {
-                            try (Connection connection = database.getPool().getConnection();
-                                 PreparedStatement statement = connection.prepareStatement("UPDATE player SET " +
-                                         "inv = ? WHERE id = " + key + ";")) {
-                                statement.setString(1, invString);
-                                statement.executeUpdate();
-
-                            } catch (SQLException x) {
-                                x.printStackTrace();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-         */
     }
 
     private boolean structureDistanceCheck(Location location) {
@@ -312,6 +158,7 @@ public class EventListener implements Listener {
         for (StructureType structureType : structureList) {
             if (location.getWorld().locateNearestStructure(location, structureType, 3, false) != null) {
                 Location structureLocation = location.getWorld().locateNearestStructure(location, structureType, 3, false);
+                System.out.println(structureType.toString() + location.distanceSquared(structureLocation));
 
                 if (location.distanceSquared(structureLocation) <= 10000) {
                     i = i + 1;
