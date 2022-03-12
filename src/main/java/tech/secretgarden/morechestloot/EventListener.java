@@ -25,7 +25,7 @@ public class EventListener implements Listener {
     private final CoreProtectAPI CoreProtect = new CoreProtectAPI();
     private final CoreProtectMethods coreProtectMethods = new CoreProtectMethods();
     private static final List<Location> placedBlocks = new ArrayList<>();
-    //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block properly. placedBlocks will perform the check instead.
+    //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block. placedBlocks will perform the check instead.
     public static List<StructureType> structureList = new ArrayList<>();
 
     LocalDateTime date = LocalDateTime.now();
@@ -86,8 +86,7 @@ public class EventListener implements Listener {
             Block block = e.getInventory().getLocation().getBlock();
             Location location = block.getLocation();
             String uuid = e.getPlayer().getUniqueId().toString();
-            if (block.getType().equals(Material.CHEST) || block.getType().equals(Material.CHEST_MINECART) ||
-                    block.getType().equals(Material.TRAPPED_CHEST) || block.getType().equals(Material.BARREL)) {
+            if (block.getType().equals(Material.CHEST) || block.getType().equals(Material.TRAPPED_CHEST) || block.getType().equals(Material.BARREL)) {
                 System.out.println("it is a chest");
                 if (structureDistanceCheck(location)) {
                     //Looking up block with cp api
