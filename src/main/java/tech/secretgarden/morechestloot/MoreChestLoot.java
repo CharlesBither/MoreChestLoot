@@ -1,7 +1,6 @@
 package tech.secretgarden.morechestloot;
 
 import net.coreprotect.CoreProtect;
-import net.coreprotect.CoreProtectAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.StructureType;
 import org.bukkit.plugin.Plugin;
@@ -17,8 +16,7 @@ import java.util.Map;
 public class MoreChestLoot extends JavaPlugin {
 
     public static ArrayList<String> configList = new ArrayList<>();
-    public static CoreProtectAPI api;
-    private Database database = new Database();
+    private final Database database = new Database();
     public ArrayList<String> getList() {
         configList.add(getConfig().getString("HOST"));
         configList.add(getConfig().getString("PORT"));

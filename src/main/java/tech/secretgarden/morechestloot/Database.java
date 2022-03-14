@@ -2,7 +2,6 @@ package tech.secretgarden.morechestloot;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 
 import java.beans.PropertyVetoException;
@@ -13,13 +12,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 public class Database {
-        /*
-    private final String HOST = "";
-    private final int PORT = 3306;
-    private final String DATABASE = "";
-    private final String USERNAME = "";
-    private final String PASSWORD = "";
-     */
+
     private final InvConversion invConversion = new InvConversion();
 
     static ArrayList<String> list = MoreChestLoot.configList;

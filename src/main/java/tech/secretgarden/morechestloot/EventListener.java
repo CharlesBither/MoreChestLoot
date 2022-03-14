@@ -1,6 +1,5 @@
 package tech.secretgarden.morechestloot;
 
-import net.coreprotect.CoreProtect;
 import net.coreprotect.CoreProtectAPI;
 import org.bukkit.*;
 import org.bukkit.block.*;
@@ -14,7 +13,6 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -29,7 +27,7 @@ public class EventListener implements Listener {
     //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block. placedBlocks will perform the check instead.
     public static List<StructureType> structureList = new ArrayList<>();
 
-    private CoreProtectAPI coreProtect = new CoreProtectAPI();
+    private final CoreProtectAPI coreProtect = new CoreProtectAPI();
 
     LocalDateTime date = LocalDateTime.now();
     Timestamp timestamp = Timestamp.valueOf(date);
