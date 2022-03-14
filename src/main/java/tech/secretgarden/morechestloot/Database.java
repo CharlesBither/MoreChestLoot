@@ -84,9 +84,11 @@ public class Database {
                 String invString = rs.getString("inv");
                 Inventory inv = invConversion.stringToInventory(invString);
                 if (xx == x && yy == y && zz == z) {
+                    System.out.println("database check passed.");
                     i = i + 1;
                     e.setCancelled(true);
                     e.getPlayer().openInventory(inv);
+                    System.out.println("opened loot chest for " + e.getPlayer().getName());
                 }
             }
         } catch (SQLException exception) {
