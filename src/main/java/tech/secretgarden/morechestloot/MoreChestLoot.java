@@ -12,14 +12,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 public class MoreChestLoot extends JavaPlugin {
 
     public static ArrayList<String> configList = new ArrayList<>();
+    public static CoreProtectAPI api;
     private Database database = new Database();
-    private EventListener eventListener = new EventListener();
     public ArrayList<String> getList() {
         configList.add(getConfig().getString("HOST"));
         configList.add(getConfig().getString("PORT"));
@@ -64,38 +63,30 @@ public class MoreChestLoot extends JavaPlugin {
 
         System.out.println("Connected to database = " + Database.isConnected());
 
-        CoreProtectAPI api = getCoreProtect();
-        if (api != null){ // Ensure we have access to the API
-            api.testAPI(); // Will print out "[CoreProtect] API test successful." in the console.
-        }
         Bukkit.getPluginManager().registerEvents(new EventListener(), this);
 
         Map<String, StructureType> structureMap = StructureType.getStructureTypes();
         for (Map.Entry<String, StructureType> entry : structureMap.entrySet()) {
             EventListener.structureList.add(entry.getValue());
         }
+
+        if (getCpAPI() != null) {
+            System.out.println("Found CP API");
+        } else {
+            System.out.println("CP API not found");
+        }
+
     }
-    public CoreProtectAPI getCoreProtect() {
-        Plugin plugin = getServer().getPluginManager().getPlugin("CoreProtect");
 
-        // Check that CoreProtect is loaded
-        if (plugin == null || !(plugin instanceof CoreProtect)) {
+    public CoreProtect getCpAPI() {
+        Plugin cpPlugin = Bukkit.getServer().getPluginManager().getPlugin("CoreProtect");
+        if (cpPlugin instanceof CoreProtect) {
+            return (CoreProtect) cpPlugin;
+        } else {
             return null;
         }
-
-        // Check that the API is enabled
-        CoreProtectAPI CoreProtect = ((CoreProtect) plugin).getAPI();
-        if (CoreProtect.isEnabled() == false) {
-            return null;
-        }
-
-        // Check that a compatible version of the API is loaded
-        if (CoreProtect.APIVersion() < 7) {
-            return null;
-        }
-
-        return CoreProtect;
     }
+
 
 
     @Override

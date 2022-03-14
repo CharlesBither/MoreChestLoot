@@ -1,5 +1,6 @@
 package tech.secretgarden.morechestloot;
 
+import net.coreprotect.CoreProtect;
 import net.coreprotect.CoreProtectAPI;
 import org.bukkit.*;
 import org.bukkit.block.*;
@@ -13,6 +14,7 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -22,11 +24,12 @@ public class EventListener implements Listener {
 
     private final InvConversion invConversion = new InvConversion();
     private final Database database = new Database();
-    private final CoreProtectAPI CoreProtect = new CoreProtectAPI();
     private final CoreProtectMethods coreProtectMethods = new CoreProtectMethods();
     private static final List<Location> placedBlocks = new ArrayList<>();
     //if a chest is placed and opened quickly after, CP api does not have enough time to lookup block. placedBlocks will perform the check instead.
     public static List<StructureType> structureList = new ArrayList<>();
+
+    private CoreProtectAPI coreProtect = new CoreProtectAPI();
 
     LocalDateTime date = LocalDateTime.now();
     Timestamp timestamp = Timestamp.valueOf(date);
@@ -59,7 +62,7 @@ public class EventListener implements Listener {
             Block block = e.getBlock();
             Location location = block.getLocation();
             if (structureDistanceCheck(location)) {
-                List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
+                List<String[]> blockLookup = coreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
                 if (blockLookup == null) {
                     System.out.println("lookup is null! This is an error!");
                 } else {
@@ -88,7 +91,7 @@ public class EventListener implements Listener {
                 if (structureDistanceCheck(location) && !location.getWorld().getName().equalsIgnoreCase("survival_the_end") ||
                         !location.getWorld().getName().equalsIgnoreCase("world_the_end")) {
                     //Looking up block with cp api
-                    List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
+                    List<String[]> blockLookup = coreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
                     if (blockLookup == null) {
                         System.out.println("lookup is null! This is an error!");
                     } else {
@@ -135,7 +138,7 @@ public class EventListener implements Listener {
                     if (biome.equals(Biome.SMALL_END_ISLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_MIDLANDS)) {
                         //opened an inventory in the end
                         //Looking up block with cp api
-                        List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
+                        List<String[]> blockLookup = coreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
                         if (blockLookup == null) {
                             System.out.println("lookup is null! This is an error!");
                         } else {
@@ -206,7 +209,7 @@ public class EventListener implements Listener {
     private void checkBlockPlaceSouthEast(BlockPlaceEvent e, int x, int z) {
         if (e.getBlockPlaced().getLocation().add(x,0, z).getBlock().getType().equals(Material.CHEST)) {
             Block otherBlock = e.getBlockPlaced().getLocation().add(x,0, z).getBlock();
-            List<String[]> blockLookup = CoreProtect.blockLookup(otherBlock, 60 * 60 * 24 * 365 * 5);
+            List<String[]> blockLookup = coreProtect.blockLookup(otherBlock, 60 * 60 * 24 * 365 * 5);
             if (coreProtectMethods.actionLookup(blockLookup)) {
                 //player did not place or break otherBlock according to cp api
                 if (!placedBlockMapCheck(otherBlock)) {
@@ -221,7 +224,7 @@ public class EventListener implements Listener {
     private void checkBlockPlaceNorthWest(BlockPlaceEvent e, int x, int z) {
         if (e.getBlockPlaced().getLocation().subtract(x,0, z).getBlock().getType().equals(Material.CHEST)) {
             Block otherBlock = e.getBlockPlaced().getLocation().subtract(x,0, z).getBlock();
-            List<String[]> blockLookup = CoreProtect.blockLookup(otherBlock, 60 * 60 * 24 * 365 * 5);
+            List<String[]> blockLookup = coreProtect.blockLookup(otherBlock, 60 * 60 * 24 * 365 * 5);
             if (coreProtectMethods.actionLookup(blockLookup)) {
                 //player did not place or break otherBlock according to cp api
                 if (!placedBlockMapCheck(otherBlock)) {

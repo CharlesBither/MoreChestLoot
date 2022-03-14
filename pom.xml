@@ -62,10 +62,6 @@
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
-        <repository>
-            <id>playpro-repo</id>
-            <url>https://maven.playpro.com</url>
-        </repository>
     </repositories>
 
     <dependencies>
@@ -80,12 +76,6 @@
             <artifactId>c3p0</artifactId>
             <version>0.9.5.5</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.coreprotect</groupId>
-            <artifactId>coreprotect</artifactId>
-            <version>21.1</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
