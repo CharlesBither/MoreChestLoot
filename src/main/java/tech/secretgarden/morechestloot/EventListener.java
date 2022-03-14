@@ -38,7 +38,6 @@ public class EventListener implements Listener {
 
             if (structureDistanceCheck(location)) {
                 //At this point. a chest has been placed near a structure
-                System.out.println("you placed a block near a structure");
 
                 //checks if a chest was placed next to a loot chest
                 checkBlockPlaceSouthEast(e, 1, 0);
@@ -82,13 +81,12 @@ public class EventListener implements Listener {
     @EventHandler
     public void open(InventoryOpenEvent e) {
         if (e.getInventory().getLocation() != null) {
-            System.out.println("opened inv");
             Block block = e.getInventory().getLocation().getBlock();
             Location location = block.getLocation();
             String uuid = e.getPlayer().getUniqueId().toString();
             if (block.getType().equals(Material.CHEST) || block.getType().equals(Material.TRAPPED_CHEST) || block.getType().equals(Material.BARREL)) {
-                System.out.println("it is a chest");
-                if (structureDistanceCheck(location)) {
+                if (structureDistanceCheck(location) && !location.getWorld().getName().equalsIgnoreCase("survival_the_end") ||
+                        !location.getWorld().getName().equalsIgnoreCase("world_the_end")) {
                     //Looking up block with cp api
                     List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
                     if (blockLookup == null) {
@@ -97,18 +95,6 @@ public class EventListener implements Listener {
                         int x = block.getX();
                         int y = block.getY();
                         int z = block.getZ();
-
-                        if (block.getType().equals(Material.CHEST)) {
-                            Chest chest = (Chest) block.getState();
-                            InventoryHolder holder = chest.getBlockInventory().getHolder();
-                            if (holder instanceof DoubleChest) {
-                                DoubleChest doubleChest = (DoubleChest) holder;
-                                Chest leftChest = (Chest) doubleChest.getLeftSide();
-                                x = leftChest.getX();
-                                y = leftChest.getY();
-                                z = leftChest.getZ();
-                            }
-                        }
                         //block = a block other than a chest
                         if (coreProtectMethods.actionLookup(blockLookup)) {
                             //(if a player has NOT placed this block before)
@@ -116,9 +102,58 @@ public class EventListener implements Listener {
                                 //(if a player has placed this block before)
                                 return;
                             } else {
-                                checkOrMakeInventory(e, x, y, z, 27, uuid, location);
-                                //If player has loot chest it will stop here
-                                setInventory(e, x, y, z, location);
+                                if (block.getType().equals(Material.CHEST)) {
+                                    Chest chest = (Chest) block.getState();
+                                    InventoryHolder holder = chest.getBlockInventory().getHolder();
+                                    if (holder instanceof DoubleChest) {
+                                        DoubleChest doubleChest = (DoubleChest) holder;
+                                        Chest leftChest = (Chest) doubleChest.getLeftSide();
+                                        x = leftChest.getX();
+                                        y = leftChest.getY();
+                                        z = leftChest.getZ();
+                                        if (database.check(e, x, y, z, uuid)) {
+                                            makeInventory(e, x, y, z, 54, uuid, location);
+                                            //If player has loot chest it will stop here
+                                            setInventory(e, x, y, z, location);
+                                            return;
+                                        }
+
+                                    }
+                                }
+                                if (database.check(e, x, y, z, uuid)) {
+                                    makeInventory(e, x, y, z, 27, uuid, location);
+                                    //If player has loot chest it will stop here
+                                    setInventory(e, x, y, z, location);
+                                }
+
+                            }
+                        }
+                    }
+                } else if (location.getWorld().getName().equalsIgnoreCase("survival_the_end") ||
+                        location.getWorld().getName().equalsIgnoreCase("world_the_end")) {
+                    Biome biome = location.getWorld().getBiome(location);
+                    if (biome.equals(Biome.SMALL_END_ISLANDS) || biome.equals(Biome.END_BARRENS) || biome.equals(Biome.END_HIGHLANDS) || biome.equals(Biome.END_MIDLANDS)) {
+                        //opened an inventory in the end
+                        //Looking up block with cp api
+                        List<String[]> blockLookup = CoreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
+                        if (blockLookup == null) {
+                            System.out.println("lookup is null! This is an error!");
+                        } else {
+                            int x = block.getX();
+                            int y = block.getY();
+                            int z = block.getZ();
+                            //block = a block other than a chest
+                            if (coreProtectMethods.actionLookup(blockLookup)) {
+                                //(if a player has NOT placed this block before)
+                                if (placedBlockMapCheck(block)) {
+                                    //(if a player has placed this block before)
+                                    return;
+                                } else if (database.check(e, x, y, z, uuid)) {
+
+                                    makeInventory(e, x, y, z, 27, uuid, location);
+                                    //If player has loot chest it will stop here
+                                    setInventory(e, x, y, z, location);
+                                }
                             }
                         }
                     }
@@ -132,7 +167,8 @@ public class EventListener implements Listener {
 
         Location location = e.getPlayer().getLocation();
 
-        if (structureDistanceCheck(location)) {
+        if (structureDistanceCheck(location) || location.getWorld().getName().equalsIgnoreCase("survival_the_end") ||
+                location.getWorld().getName().equalsIgnoreCase("world_the_end")) {
             if (e.getView().getTitle().contains("Loot Chest")) {
                 String uuid = e.getPlayer().getUniqueId().toString();
                 String title = e.getView().getTitle();
@@ -158,8 +194,6 @@ public class EventListener implements Listener {
         for (StructureType structureType : structureList) {
             if (location.getWorld().locateNearestStructure(location, structureType, 3, false) != null) {
                 Location structureLocation = location.getWorld().locateNearestStructure(location, structureType, 3, false);
-                System.out.println(structureType.toString() + location.distanceSquared(structureLocation));
-
                 if (location.distanceSquared(structureLocation) <= 10000) {
                     i = i + 1;
 
@@ -211,8 +245,8 @@ public class EventListener implements Listener {
         return i == 2;
     }
 
-    private void checkOrMakeInventory(InventoryOpenEvent e, int x, int y, int z, int invSize, String uuid, Location location) {
-        if (database.check(e, x, y, z, uuid)) {
+    private void makeInventory(InventoryOpenEvent e, int x, int y, int z, int invSize, String uuid, Location location) {
+
             String stringX = Integer.toString(x);
             String stringY = Integer.toString(y);
             String stringZ = Integer.toString(z);
@@ -242,9 +276,10 @@ public class EventListener implements Listener {
             }
 
         }
-    }
+
 
     private void setInventory(InventoryOpenEvent e, int x, int y, int z, Location location) {
+        System.out.println("setting inventory");
         //getting items from natural chest
         ItemStack[] items = e.getInventory().getContents();
 
@@ -260,16 +295,22 @@ public class EventListener implements Listener {
                 String invString = rs.getString("inv");
                 Inventory inv = invConversion.stringToInventory(invString);
                 inv.setContents(items);
-                double random = new Random().nextDouble();
-                if (random <= 0.06) {
-                    inv.addItem(new ItemStack(Material.ELYTRA));
-                }
-                double random1 = new Random().nextDouble();
-                if (random1 <= 0.04) {
-                    inv.addItem(new ItemStack(Material.NETHER_STAR));
+                if (e.getPlayer().getLocation().getWorld().getName().equalsIgnoreCase("world_the_end") ||
+                        e.getPlayer().getLocation().getWorld().getName().equalsIgnoreCase("survival_the_end")) {
+                    double random = new Random().nextDouble();
+                    if (random <= 0.06) {
+                        inv.addItem(new ItemStack(Material.ELYTRA));
+                        System.out.println("Added Elytra");
+                    }
+                    double random1 = new Random().nextDouble();
+                    if (random1 <= 0.04) {
+                        inv.addItem(new ItemStack(Material.NETHER_STAR));
+                        System.out.println("Added Nether Star");
+                    }
                 }
                 e.setCancelled(true);
                 e.getPlayer().openInventory(inv);
+                System.out.println("successfully opened Loot Chest for " + e.getPlayer().getName());
             }
 
         } catch (SQLException exception) {
