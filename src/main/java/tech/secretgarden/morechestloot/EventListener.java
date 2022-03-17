@@ -59,19 +59,19 @@ public class EventListener implements Listener {
             Player player = e.getPlayer();
             Block block = e.getBlock();
             Location location = block.getLocation();
-            if (structureDistanceCheck(location)) {
-                List<String[]> blockLookup = coreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
-                if (blockLookup == null) {
-                    System.out.println("lookup is null! This is an error!");
-                } else {
-                    if (coreProtectMethods.actionLookup(blockLookup)) {
-                        //(if a player has NOT placed this block before)
-                        if (placedBlockMapCheck(block)) {
-                            //(if a player has placed this block before)
-                            return;
-                        } else {
-                            e.setCancelled(true);
-                            player.sendMessage(ChatColor.RED + "You do not have permission to break a Loot Chest");
+            if (block.getType().equals(Material.CHEST)) {
+                if (structureDistanceCheck(location)) {
+                    List<String[]> blockLookup = coreProtect.blockLookup(block, 60 * 60 * 24 * 365 * 5);
+                    if (blockLookup == null) {
+                        System.out.println("lookup is null! This is an error!");
+                    } else {
+                        if (coreProtectMethods.actionLookup(blockLookup)) {
+                            //(if a player has NOT placed this block before)
+                            if (!placedBlockMapCheck(block)) {
+                                //(if a player has placed this block before)
+                                e.setCancelled(true);
+                                player.sendMessage(ChatColor.RED + "You do not have permission to break a Loot Chest");
+                            }
                         }
                     }
                 }
