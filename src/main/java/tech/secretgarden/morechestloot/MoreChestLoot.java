@@ -56,7 +56,7 @@ public class MoreChestLoot extends JavaPlugin {
             } catch (Exception x) {
                 x.printStackTrace();
             }
-            ping.runTaskTimer(this, 20, 20 * 60);
+            //ping.runTaskTimer(this, 20, 20 * 60);
         }
 
         System.out.println("Connected to database = " + Database.isConnected());
